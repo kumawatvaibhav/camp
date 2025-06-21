@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Text, Html, Environment, PerspectiveCamera, useProgress } from '@react-three/drei';
 import { motion } from 'framer-motion';
@@ -7,27 +7,91 @@ import * as THREE from 'three';
 const Loader = () => {
   const { progress } = useProgress();
   const [image, setImage] = useState('');
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const [showLoader, setShowLoader] = useState(true);
+  const [isMinimumTimeMet, setIsMinimumTimeMet] = useState(false);
+  const startTimeRef = useRef(Date.now());
+  const intervalRef = useRef(null);
+  const minLoadingTime = 4000; // 4 seconds minimum
 
-  useState(() => {
+  useEffect(() => {
     const images = [
-      '/src/assets/rain-rainy-day.gif',
-      '/src/assets/pokemon-anime.gif',
-      '/src/assets/snorlax-roll.gif',
-      '/src/assets/wild-snorlax-appeared.gif',
-      '/src/assets/snorlax-crawling.gif',
-      '/src/assets/sleepy-snorlax.gif',
+      '/rain-rainy-day.gif',
+      '/pokemon-anime.gif',
+      '/snorlax-roll.gif',
+      '/wild-snorlax-appeared.gif',
+      '/snorlax-crawling.gif',
+      '/sleepy-snorlax.gif',
     ];
     setImage(images[Math.floor(Math.random() * images.length)]);
-  });
+    startTimeRef.current = Date.now();
+    
+    // Always enforce minimum time, regardless of actual loading speed
+    const minimumTimeTimer = setTimeout(() => {
+      setIsMinimumTimeMet(true);
+    }, minLoadingTime);
+
+    return () => clearTimeout(minimumTimeTimer);
+  }, []);
+
+  useEffect(() => {
+    const updateProgress = () => {
+      const elapsedTime = Date.now() - startTimeRef.current;
+      const timeProgress = Math.min((elapsedTime / minLoadingTime) * 100, 100);
+      
+      // If actual loading is fast, use time-based progress
+      // If actual loading is slow, use actual progress
+      let combinedProgress;
+      if (progress >= 100 && elapsedTime < minLoadingTime) {
+        // Loading is complete but minimum time not met - use time-based progress
+        combinedProgress = timeProgress;
+      } else {
+        // Use the higher of the two progresses
+        combinedProgress = Math.max(progress, timeProgress);
+      }
+      
+      setDisplayProgress(combinedProgress);
+
+      // Hide loader only when both conditions are met
+      if (progress >= 100 && isMinimumTimeMet) {
+        setTimeout(() => {
+          setShowLoader(false);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+        }, 300);
+      }
+    };
+
+    intervalRef.current = setInterval(updateProgress, 50);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [progress, isMinimumTimeMet]);
+
+  if (!showLoader) {
+    return null;
+  }
 
   return (
     <Html center>
       <div className="flex flex-col items-center justify-center bg-black bg-opacity-75 rounded-lg p-8">
         <img src={image} alt="Loading asset" className="w-68 h-68 mb-4" />
         <div className="w-64 bg-gray-700 rounded-full h-2.5">
-          <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+          <motion.div
+            className="bg-green-500 h-2.5 rounded-full"
+            animate={{ width: `${displayProgress}%` }}
+            transition={{ ease: 'easeOut', duration: 0.3 }}
+          />
         </div>
-        <div className="text-green-400 mt-2 text-sm">{Math.round(progress)}% loaded</div>
+        <div className="text-green-400 mt-2 text-sm">
+          {Math.round(displayProgress)}% loaded
+        </div>
+        <div className="text-gray-400 mt-1 text-xs">
+          Preparing your forest adventure...
+        </div>
       </div>
     </Html>
   );
@@ -52,7 +116,7 @@ const ForestModel = () => {
       />
     );
   }
-
+  
 };
 
 interface Forest3DSceneProps {
