@@ -1,122 +1,85 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Text, Html, Environment, PerspectiveCamera, useProgress } from '@react-three/drei';
+import React, { Suspense, useState, useRef, useEffect } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { OrbitControls, useGLTF, Environment } from '@react-three/drei';
+import Loader from './Loader';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 
-const Loader = () => {
-  const { progress } = useProgress();
-  const [image, setImage] = useState('');
-  const [displayProgress, setDisplayProgress] = useState(0);
-  const [showLoader, setShowLoader] = useState(true);
-  const [isMinimumTimeMet, setIsMinimumTimeMet] = useState(false);
-  const startTimeRef = useRef(Date.now());
-  const intervalRef = useRef(null);
-  const minLoadingTime = 4000; // 4 seconds minimum
-
-  useEffect(() => {
-    const images = [
-      '/rain-rainy-day.gif',
-      '/pokemon-anime.gif',
-      '/snorlax-roll.gif',
-      '/wild-snorlax-appeared.gif',
-      '/snorlax-crawling.gif',
-      '/sleepy-snorlax.gif',
-    ];
-    setImage(images[Math.floor(Math.random() * images.length)]);
-    startTimeRef.current = Date.now();
-    
-    // Always enforce minimum time, regardless of actual loading speed
-    const minimumTimeTimer = setTimeout(() => {
-      setIsMinimumTimeMet(true);
-    }, minLoadingTime);
-
-    return () => clearTimeout(minimumTimeTimer);
-  }, []);
-
-  useEffect(() => {
-    const updateProgress = () => {
-      const elapsedTime = Date.now() - startTimeRef.current;
-      const timeProgress = Math.min((elapsedTime / minLoadingTime) * 100, 100);
-      
-      // If actual loading is fast, use time-based progress
-      // If actual loading is slow, use actual progress
-      let combinedProgress;
-      if (progress >= 100 && elapsedTime < minLoadingTime) {
-        // Loading is complete but minimum time not met - use time-based progress
-        combinedProgress = timeProgress;
-      } else {
-        // Use the higher of the two progresses
-        combinedProgress = Math.max(progress, timeProgress);
-      }
-      
-      setDisplayProgress(combinedProgress);
-
-      // Hide loader only when both conditions are met
-      if (progress >= 100 && isMinimumTimeMet) {
-        setTimeout(() => {
-          setShowLoader(false);
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-          }
-        }, 300);
-      }
-    };
-
-    intervalRef.current = setInterval(updateProgress, 50);
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [progress, isMinimumTimeMet]);
-
-  if (!showLoader) {
-    return null;
-  }
-
-  return (
-    <Html center>
-      <div className="flex flex-col items-center justify-center bg-black bg-opacity-75 rounded-lg p-8">
-        <img src={image} alt="Loading asset" className="w-68 h-68 mb-4" />
-        <div className="w-64 bg-gray-700 rounded-full h-2.5">
-          <motion.div
-            className="bg-green-500 h-2.5 rounded-full"
-            animate={{ width: `${displayProgress}%` }}
-            transition={{ ease: 'easeOut', duration: 0.3 }}
-          />
-        </div>
-        <div className="text-green-400 mt-2 text-sm">
-          {Math.round(displayProgress)}% loaded
-        </div>
-        <div className="text-gray-400 mt-1 text-xs">
-          Preparing your forest adventure...
-        </div>
-      </div>
-    </Html>
-  );
+const ForestModel = () => {
+  const { scene } = useGLTF('/forest_camping.glb');
+  return <primitive object={scene} scale={[2, 2, 2]} />;
 };
 
-const ForestModel = () => {
-  // Try to load the GLB model, with fallback if it doesn't exist
-  let model;
-  try {
-    model = useGLTF('/forest_camping.glb');
-  } catch (error) {
-    console.log('GLB model not found, using fallback scene');
-    model = null;
-  }
-
-  if (model && model.scene) {
-    return (
-      <primitive 
-        object={model.scene} 
-        scale={[2, 2, 2]} 
-        position={[0, 0, 0]} 
-      />
-    );
-  }
+const CameraController = ({ isAnimating, onAnimationComplete }: { isAnimating: boolean, onAnimationComplete: () => void }) => {
+  const { camera } = useThree();
+  const controlsRef = useRef<any>();
   
+  // Starting position (zoomed out)
+  const startPosition = new THREE.Vector3(15, 30, 100);
+  // Final position (your desired position)
+  const endPosition = new THREE.Vector3(3, 6, 25);
+  
+  const animationProgress = useRef(0);
+  const animationDuration = 3000; // 3 seconds
+
+  useEffect(() => {
+    if (isAnimating) {
+      // Set initial camera position (zoomed out)
+      camera.position.copy(startPosition);
+      camera.lookAt(0, 0, 0);
+      animationProgress.current = 0;
+      
+      // Disable controls during animation
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false;
+      }
+    }
+  }, [isAnimating, camera]);
+
+  useFrame((state, delta) => {
+    if (isAnimating && animationProgress.current < 1) {
+      // Update animation progress
+      animationProgress.current += delta / (animationDuration / 1000);
+      
+      if (animationProgress.current >= 1) {
+        animationProgress.current = 1;
+        // Re-enable controls when animation is complete
+        if (controlsRef.current) {
+          controlsRef.current.enabled = true;
+        }
+        onAnimationComplete();
+      }
+      
+      // Smooth easing function (ease-out)
+      const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+      const progress = easeOut(animationProgress.current);
+      
+      // Interpolate camera position
+      camera.position.lerpVectors(startPosition, endPosition, progress);
+      
+      // Keep camera looking at the center
+      camera.lookAt(0, 0, 0);
+      
+      // Update controls target if they exist
+      if (controlsRef.current) {
+        controlsRef.current.target.set(0, 0, 0);
+        controlsRef.current.update();
+      }
+    }
+  });
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      enableZoom={true}
+      enablePan={true}
+      enableRotate={true}
+      minDistance={3}
+      maxDistance={200}
+      maxPolarAngle={Math.PI / 2}
+      target={[0, 0, 0]}
+    />
+  );
 };
 
 interface Forest3DSceneProps {
@@ -124,58 +87,112 @@ interface Forest3DSceneProps {
 }
 
 const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
-  
+  const [showScene, setShowScene] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [showUI, setShowUI] = useState(false);
+
+  const handleExploreClick = () => {
+    setShowScene(true);
+    setIsAnimating(true);
+  };
+
+  const handleAnimationComplete = () => {
+    setIsAnimating(false);
+    setShowUI(true);
+  };
+
   return (
     <div className="w-full h-screen relative">
-      <Canvas
-        shadows
-        camera={{ position: [3, 6, 25], fov: 50 }}
-        gl={{ antialias: true, alpha: true }}
-      >
-        <Suspense fallback={<Loader />}>
-          {/* Lighting */}
-          <ambientLight intensity={0.4} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-          />
-          <pointLight position={[0, 2, 0]} intensity={0.8} color="#ff4500" />
+      {/* Loader */}
+      {!showScene && (
+        <Canvas>
+          <Suspense fallback={null}>
+            <Loader onFinish={handleExploreClick} />
+          </Suspense>
+        </Canvas>
+      )}
 
-          {/* Environment */}
-          <Environment preset="forest" />
-
-          {/* 3D Model/Scene */}
-          <ForestModel />
-
-          {/* Controls */}
-          <OrbitControls
-            enableZoom={true}
-            enablePan={true}
-            enableRotate={true}
-            minDistance={3}
-            maxDistance={200}
-            maxPolarAngle={Math.PI / 2}
-          />
-        </Suspense>
-      </Canvas>
-
-      {/* UI Overlay */}
-      <div className="absolute top-4 left-4 z-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-black/80 border border-green-400 rounded-lg p-4 text-green-400"
+      {/* 3D Scene with zoom animation */}
+      {showScene && (
+        <Canvas
+          shadows
+          camera={{ position: [15, 30, 100], fov: 50 }}
+          gl={{ antialias: true, alpha: true }}
         >
-          <h3 className="text-lg font-bold mb-2">🌲 Welcome to Vaibhav's World</h3>
-          <p className="text-sm text-gray-400">Click on the glowing orbs to explore different sections!</p>
-          <div className="mt-2 text-xs">
-            <div>🖱️ Drag to rotate • 🔍 Scroll to zoom</div>
-          </div>
-        </motion.div>
-      </div>
+          <Suspense fallback={null}>
+            <ambientLight intensity={0.4} />
+            <directionalLight
+              position={[10, 10, 5]}
+              intensity={1}
+              castShadow
+              shadow-mapSize-width={2048}
+              shadow-mapSize-height={2048}
+            />
+            <pointLight position={[0, 2, 0]} intensity={0.8} color="#ff4500" />
+            <Environment preset="forest" />
+            <ForestModel />
+            <CameraController 
+              isAnimating={isAnimating} 
+              onAnimationComplete={handleAnimationComplete}
+            />
+          </Suspense>
+        </Canvas>
+      )}
+
+      {/* UI overlay - only show after zoom animation completes */}
+      {showScene && showUI && (
+        <div className="absolute top-6 left-6 z-10">
+          <motion.div
+            initial={{ opacity: 0, y: -30, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
+            className="bg-white-900/95 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-slate-700/50 max-w-sm"
+          >
+            {/* Header with animated icon */}
+            <div className="flex items-center gap-3 mb-4">
+              <div>
+                <h3 className="text-xl font-semibold text-white tracking-wide">
+                  Welcome to Vaibhav's World
+                </h3>
+                <div className="w-16 h-0.5 bg-emerald-400 mt-1 rounded-full"></div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="text-slate-300 text-sm leading-relaxed mb-4">
+               Explore every corner of this art.
+            </p>
+
+            {/* Interactive hints */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 text-xs text-slate-400">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="w-2 h-2 bg-emerald-400 rounded-full"
+                ></motion.div>
+                <img src="/snorlax.png" alt="" className='h-6 w-6'></img>Click Snorlax to explore sections
+              </div>
+            </div>
+
+            {/* Subtle bottom accent */}
+            <div className="mt-4 pt-3 border-t border-slate-700/30">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Interactive Experience</span>
+                <motion.div
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="flex gap-1"
+                >
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                </motion.div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

@@ -189,14 +189,6 @@ const Index = () => {
                   </motion.div>
                   
                   <div className="hidden md:flex space-x-8">
-                    <Button
-                      onClick={returnTo3D}
-                      variant="ghost"
-                      className="flex items-center space-x-2 text-blue-400 hover:text-blue-300"
-                    >
-                      <ArrowLeft className="w-4 h-4" />
-                      <span>Return to Campsite</span>
-                    </Button>
                     {['about', 'projects', 'stack', 'achievements', 'testimonials', 'contact'].map((item) => (
                       <button
                         key={item}
