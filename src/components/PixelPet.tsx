@@ -19,7 +19,6 @@ const Model = () => {
 };
 
 const PixelPet = () => {
-  const [position, setPosition] = useState({ x: 150, y: window.innerHeight - 250 });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [quickActions, setQuickActions] = useState({ notifications: 3, energy: 85 });
@@ -36,14 +35,6 @@ const PixelPet = () => {
   const backgroundX = useTransform(mouseX, [-300, 300], [-20, 20]);
   const backgroundY = useTransform(mouseY, [-300, 300], [-20, 20]);
   const glowIntensity = useTransform(mouseX, [-300, 300], [0.3, 0.8]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setPosition((pos) => ({ ...pos, y: window.innerHeight - 120 }));
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -176,27 +167,14 @@ const PixelPet = () => {
       {/* Snorlax Pet */}
       <motion.div
         ref={petRef}
-        className="fixed z-40 cursor-pointer select-none"
+        className="fixed z-40 cursor-pointer select-none right-4 md:right-8 top-1/2 -translate-y-1/2"
         style={{
-          left: position.x,
-          top: position.y,
-          width: 125,
-          height: 125
+          width: 'clamp(80px, 10vw, 125px)',
+          height: 'clamp(80px, 10vw, 125px)',
         }}
         onClick={handlePetClick}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        // drag
-        // dragConstraints={{
-        //   left: 0,
-        //   right: window.innerWidth - 100,
-        //   top: 0,
-        //   bottom: window.innerHeight - 100,
-        // }}
-        // dragMomentum={false}
-        // onDrag={(event, info) => {
-        //   setPosition({ x: info.point.x, y: info.point.y });
-        // }}
       >
         <div className="relative w-full h-full">
           <Canvas
@@ -236,11 +214,11 @@ const PixelPet = () => {
               damping: 30,
               mass: 0.8
             }}
-            className="fixed z-50"
+            className="fixed z-50 right-4 md:right-8"
             style={{
-              left: Math.max(10, Math.min(position.x - 120, window.innerWidth - 250)),
-              top: Math.max(10, position.y - 350),
-              width: 240,
+              width: 'clamp(200px, 30vw, 260px)',
+              maxWidth: '90vw',
+              bottom: `calc(30% - clamp(62.5px, 5vw, 62.5px))`,
             }}
           >
             {/* Main Liquid Glass Container */}
@@ -342,91 +320,93 @@ const PixelPet = () => {
                      </div>
                    </motion.button>
                 )}
-                {navItems.map((item, index) => (
-                  <motion.button
-                    key={item.section}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ 
-                      delay: 0.15 + index * 0.08,
-                      type: 'spring',
-                      stiffness: 300,
-                      damping: 25
-                    }}
-                    onClick={() => handleNavClick(item.section)}
-                    className="group relative w-full p-3 rounded-2xl transition-all duration-300 mb-1 overflow-hidden"
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {/* Item Background with Liquid Effect */}
-                    <motion.div
-                      className="absolute inset-0 rounded-2xl bg-white/5"
-                      animate={{
-                        background: activeSection === item.section 
-                          ? `linear-gradient(135deg, ${item.color.replace('from-', 'rgba(').replace('via-', ', rgba(').replace('to-', ', rgba(').replace(/\w+-(\d+)/g, (match, num) => {
-                              const colors = {
-                                'blue': `59, 130, 246, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'emerald': `16, 185, 129, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'orange': `251, 146, 60, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'yellow': `251, 191, 36, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'purple': `147, 51, 234, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'pink': `236, 72, 153, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
-                                'cyan': `59, 130, 246, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`
-                              };
-                              const colorKey = match.split('-')[0];
-                              return colors[colorKey] || '255, 255, 255, 0.1';
-                            })})`
-                          : 'rgba(255, 255, 255, 0.05)'
+                <div className="max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                  {navItems.map((item, index) => (
+                    <motion.button
+                      key={item.section}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ 
+                        delay: 0.15 + index * 0.08,
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 25
                       }}
-                      transition={{ duration: 0.3 }}
-                    />
-                    
-                    {/* Content */}
-                    <div className="relative flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <motion.div
-                          className="text-2xl"
-                          animate={{ 
-                            scale: activeSection === item.section ? 1.1 : 1,
-                            rotateZ: activeSection === item.section ? 5 : 0
-                          }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {item.icon}
-                        </motion.div>
-                        <div className="text-left">
-                          <div className="text-white font-medium text-sm leading-tight">
-                            {item.label}
-                          </div>
-                          <div className="text-white/60 text-xs">
-                            {item.description}
+                      onClick={() => handleNavClick(item.section)}
+                      className="group relative w-full p-3 rounded-2xl transition-all duration-300 mb-1 overflow-hidden"
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {/* Item Background with Liquid Effect */}
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl bg-white/5"
+                        animate={{
+                          background: activeSection === item.section 
+                            ? `linear-gradient(135deg, ${item.color.replace('from-', 'rgba(').replace('via-', ', rgba(').replace('to-', ', rgba(').replace(/\w+-(\d+)/g, (match, num) => {
+                                const colors = {
+                                  'blue': `59, 130, 246, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'emerald': `16, 185, 129, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'orange': `251, 146, 60, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'yellow': `251, 191, 36, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'purple': `147, 51, 234, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'pink': `236, 72, 153, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`,
+                                  'cyan': `59, 130, 246, 0.${num === '400' ? '2' : num === '500' ? '25' : '3'}`
+                                };
+                                const colorKey = match.split('-')[0];
+                                return colors[colorKey] || '255, 255, 255, 0.1';
+                              })})`
+                            : 'rgba(255, 255, 255, 0.05)'
+                        }}
+                        transition={{ duration: 0.3 }}
+                      />
+                      
+                      {/* Content */}
+                      <div className="relative flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <motion.div
+                            className="text-2xl"
+                            animate={{ 
+                              scale: activeSection === item.section ? 1.1 : 1,
+                              rotateZ: activeSection === item.section ? 5 : 0
+                            }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {item.icon}
+                          </motion.div>
+                          <div className="text-left">
+                            <div className="text-white font-medium text-sm leading-tight">
+                              {item.label}
+                            </div>
+                            <div className="text-white/60 text-xs">
+                              {item.description}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        {item.badge && (
+                        
+                        <div className="flex items-center space-x-2">
+                          {item.badge && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.3 + index * 0.05 }}
+                              className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium"
+                            >
+                              {item.badge}
+                            </motion.div>
+                          )}
                           <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.3 + index * 0.05 }}
-                            className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-medium"
+                            animate={{ 
+                              x: activeSection === item.section ? 2 : 0,
+                              opacity: activeSection === item.section ? 1 : 0.5
+                            }}
+                            transition={{ duration: 0.2 }}
                           >
-                            {item.badge}
+                            <ChevronRight size={16} className="text-white/60" />
                           </motion.div>
-                        )}
-                        <motion.div
-                          animate={{ 
-                            x: activeSection === item.section ? 2 : 0,
-                            opacity: activeSection === item.section ? 1 : 0.5
-                          }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <ChevronRight size={16} className="text-white/60" />
-                        </motion.div>
+                        </div>
                       </div>
-                    </div>
-                  </motion.button>
-                ))}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
 
               {/* Footer */}

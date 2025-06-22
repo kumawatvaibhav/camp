@@ -474,7 +474,6 @@ const Index = () => {
       </AnimatePresence>
 
       {/* Interactive Components */}
-      <MusicPlayer />
       <PixelPet />
 
       {/* Footer (only show when not in 3D mode) */}

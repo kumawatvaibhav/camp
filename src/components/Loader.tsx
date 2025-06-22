@@ -116,7 +116,7 @@ const Loader: React.FC<LoaderProps> = ({ onFinish }) => {
         </motion.button>
         
         {!showExplore && (
-          <div className="text-gray-400 mt-3 text-sm">Preparing your world...</div>
+          <div className="text-gray-400 mt-3 text-sm">Do Things That Make you Feel Alive..</div>
         )}
       </div>
     </Html>

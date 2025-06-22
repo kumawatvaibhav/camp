@@ -5,9 +5,9 @@ import Loader from './Loader';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 
-const ForestModel = () => {
+const ForestModel = ({ scale = [2, 2, 2] }: { scale?: [number, number, number] }) => {
   const { scene } = useGLTF('/forest_camping.glb');
-  return <primitive object={scene} scale={[2, 2, 2]} />;
+  return <primitive object={scene} scale={scale} />;
 };
 
 const CameraController = ({ isAnimating, onAnimationComplete }: { isAnimating: boolean, onAnimationComplete: () => void }) => {
@@ -90,6 +90,16 @@ const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
   const [showScene, setShowScene] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [showUI, setShowUI] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleExploreClick = () => {
     setShowScene(true);
@@ -102,10 +112,10 @@ const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
   };
 
   return (
-    <div className="w-full h-screen relative">
+    <div className="w-full min-h-screen h-screen relative flex items-center justify-center">
       {/* Loader */}
       {!showScene && (
-        <Canvas>
+        <Canvas className="w-full h-full" style={{ width: '100%', height: '100%' }}>
           <Suspense fallback={null}>
             <Loader onFinish={handleExploreClick} />
           </Suspense>
@@ -115,8 +125,13 @@ const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
       {/* 3D Scene with zoom animation */}
       {showScene && (
         <Canvas
+          className="w-full h-full"
+          style={{ width: '100%', height: '100%' }}
           shadows
-          camera={{ position: [15, 30, 100], fov: 50 }}
+          camera={{
+            position: isMobile ? [18, 36, 120] : [15, 30, 100],
+            fov: isMobile ? 55 : 50
+          }}
           gl={{ antialias: true, alpha: true }}
         >
           <Suspense fallback={null}>
@@ -130,7 +145,7 @@ const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
             />
             <pointLight position={[0, 2, 0]} intensity={0.8} color="#ff4500" />
             <Environment preset="forest" />
-            <ForestModel />
+            <ForestModel scale={isMobile ? [1.7, 1.7, 1.7] : [2, 2, 2]} />
             <CameraController 
               isAnimating={isAnimating} 
               onAnimationComplete={handleAnimationComplete}
@@ -141,12 +156,12 @@ const Forest3DScene: React.FC<Forest3DSceneProps> = ({ onNavigate }) => {
 
       {/* UI overlay - only show after zoom animation completes */}
       {showScene && showUI && (
-        <div className="absolute top-6 left-6 z-10">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 w-[95vw] max-w-sm sm:left-6 sm:translate-x-0">
           <motion.div
             initial={{ opacity: 0, y: -30, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-            className="bg-white-900/95 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-slate-700/50 max-w-sm"
+            className="bg-white-900/95 backdrop-blur-md rounded-2xl p-4 sm:p-6 shadow-2xl border border-slate-700/50 w-full"
           >
             {/* Header with animated icon */}
             <div className="flex items-center gap-3 mb-4">
